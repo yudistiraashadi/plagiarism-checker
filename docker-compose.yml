@@ -29,5 +29,15 @@ services:
       postgres:
         condition: service_healthy
 
+  # Uncomment to run the app in Docker
+  # app:
+  #   build: .
+  #   environment:
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-plagiarism}:${POSTGRES_PASSWORD:-plagiarism}@pgbouncer:5432/${POSTGRES_DB:-plagiarism_checker}
+  #   depends_on:
+  #     - pgbouncer
+  #   volumes:
+  #     - ./data:/app/data
+
 volumes:
   pgdata:
