@@ -20,6 +20,13 @@ The system uses the Winnowing algorithm for fingerprint-based text matching. Thi
 - **N-gram size:** 7 words — large enough to avoid false positives from common Indonesian academic phrases
 - **Winnowing window size:** 4 — standard balance of coverage vs. fingerprint density
 - **Minimum match threshold:** 3 consecutive aligned fingerprints (~10+ matching words) — filters out coincidental short phrase matches
+- **Hash function:** 64-bit FNV-1a — fast, well-distributed, and 64-bit width avoids collision issues at 500M+ fingerprints. No text-level collision verification needed at this hash size.
+
+### Similarity Percentage Calculation
+
+- **Overall similarity:** (number of matched characters in the submitted document / total characters in submitted document) × 100. Character-based, relative to the submitted document's length.
+- **Per-source similarity:** (number of matched characters attributed to source X / total characters in submitted document) × 100.
+- Overlapping matches from multiple sources are counted once for the overall score but attributed to each source individually in the per-source breakdown.
 
 ### What Gets Detected
 
@@ -51,10 +58,10 @@ The system uses the Winnowing algorithm for fingerprint-based text matching. Thi
 **Purpose:** Extract and normalize text from thesis PDFs.
 
 **Pipeline:**
-1. Extract raw text from PDF using pymupdf
+1. Extract raw text from PDF using pymupdf. If extraction yields no text (scanned/image PDF), log a warning and skip the document — OCR is out of scope.
 2. Normalize: lowercase, strip punctuation, remove extra whitespace
-3. Remove non-content sections (cover page, table of contents, bibliography, appendices) — best-effort, configurable
-4. Remove Indonesian stopwords
+3. Remove non-content sections (cover page, table of contents, bibliography, appendices) — best-effort heuristic based on heading detection, can be disabled via `--no-section-filter` CLI flag
+4. Remove Indonesian stopwords (source: Sastrawi project's Indonesian stopword list)
 5. Store cleaned text in PostgreSQL alongside document metadata
 
 ### 3. Fingerprint Indexer
@@ -183,9 +190,23 @@ plagiarism-checker/
 - Full Docker deployment (app + DB) available for production
 - README.md documents setup with uv, Docker, and CLI usage
 
+## Error Handling
+
+- **PDF extraction fails (corrupted/scanned):** Log warning with filename, skip document, continue batch. Report skipped count at end.
+- **OAI-PMH/download errors:** Retry up to 3 times with exponential backoff. If still failing, skip and log. Scraper reports success/failure counts at completion.
+- **Database unreachable:** Fail immediately with clear error message — no silent data loss.
+- **Document yields zero fingerprints:** Log warning, store document metadata but mark as "unprocessable" in DB.
+
+## Testing Strategy
+
+- **Unit tests:** Winnowing algorithm with known inputs producing expected fingerprints. Text normalization edge cases (empty text, non-Indonesian characters, mixed content).
+- **Integration test:** Small corpus of 5 documents where one contains a known copied passage from another. Verify the checker detects the match and reports correct similarity percentage.
+- **Test data:** Fixture files in `tests/fixtures/` — small PDFs and pre-extracted text samples.
+
 ## Out of Scope
 
 - Web UI (future enhancement)
 - Semantic/paraphrase detection
 - Multi-language support
+- OCR for scanned/image PDFs
 - Pass/fail verdicts — the tool reports, the human decides
