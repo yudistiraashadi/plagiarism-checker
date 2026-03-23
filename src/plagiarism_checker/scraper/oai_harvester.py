@@ -55,6 +55,10 @@ def harvest_pdf_urls(
         if len(records_out) >= max_records:
             break
 
+        # Skip deleted records (they have no metadata)
+        if record.deleted:
+            continue
+
         meta = record.metadata
         if not meta:
             continue
