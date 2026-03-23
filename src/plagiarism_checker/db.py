@@ -40,6 +40,13 @@ def insert_document_text(
     conn.commit()
 
 
+def _to_signed64(h: int) -> int:
+    """Convert an unsigned 64-bit hash to a signed 64-bit integer for PostgreSQL bigint."""
+    if h >= 2**63:
+        return h - 2**64
+    return h
+
+
 def insert_fingerprints(
     conn: psycopg.Connection,
     document_id: int,
@@ -51,7 +58,7 @@ def insert_fingerprints(
             "COPY fingerprints (document_id, hash_value, position_start, position_end) FROM STDIN"
         ) as copy:
             for pos_start, pos_end, hash_val in fingerprints:
-                copy.write_row((document_id, hash_val, pos_start, pos_end))
+                copy.write_row((document_id, _to_signed64(hash_val), pos_start, pos_end))
     conn.commit()
 
 
@@ -74,13 +81,14 @@ def find_matching_fingerprints(
     """
     if not hash_values:
         return []
+    signed_hashes = [_to_signed64(h) for h in hash_values]
     rows = conn.execute(
         """
         SELECT document_id, hash_value, position_start, position_end
         FROM fingerprints
         WHERE hash_value = ANY(%s)
         """,
-        (hash_values,),
+        (signed_hashes,),
     ).fetchall()
     return rows
 
