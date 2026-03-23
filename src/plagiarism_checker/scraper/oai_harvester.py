@@ -3,8 +3,6 @@ import json
 import logging
 import time
 from pathlib import Path
-from urllib.parse import urlparse
-from urllib.robotparser import RobotFileParser
 
 import httpx
 from sickle import Sickle
@@ -14,19 +12,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_OAI_URL = "https://eprints.walisongo.ac.id/cgi/oai2"
 DEFAULT_OUTPUT_DIR = Path("data/corpus")
 MAX_RETRIES = 3
-
-
-def _check_robots_txt(url: str) -> bool:
-    """Check if the URL is allowed by robots.txt."""
-    parsed = urlparse(url)
-    robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
-    rp = RobotFileParser()
-    try:
-        rp.set_url(robots_url)
-        rp.read()
-        return rp.can_fetch("*", url)
-    except Exception:
-        return True  # Allow if robots.txt is unreachable
 
 
 def _download_with_retry(
@@ -57,10 +42,6 @@ def harvest_pdf_urls(
 
     Returns list of dicts with keys: identifier, title, creator, date, url
     """
-    if not _check_robots_txt(oai_url):
-        logger.error("Blocked by robots.txt: %s", oai_url)
-        return []
-
     sickle = Sickle(oai_url)
     records_out: list[dict] = []
 
@@ -123,11 +104,6 @@ def download_pdfs(
             if pdf_path.exists():
                 logger.info("Skipping existing: %s", filename)
                 success += 1
-                continue
-
-            if not _check_robots_txt(record["url"]):
-                logger.warning("Blocked by robots.txt: %s", record["url"])
-                failure += 1
                 continue
 
             try:
