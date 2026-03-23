@@ -110,6 +110,18 @@ def get_document(conn: psycopg.Connection, document_id: int) -> dict | None:
     }
 
 
+def get_indexed_paths(conn: psycopg.Connection) -> set[str]:
+    """Return the set of file_path values already indexed."""
+    rows = conn.execute("SELECT file_path FROM documents").fetchall()
+    return {row[0] for row in rows}
+
+
+def delete_all_documents(conn: psycopg.Connection) -> None:
+    """Delete all documents, text, and fingerprints (CASCADE)."""
+    conn.execute("DELETE FROM documents")
+    conn.commit()
+
+
 def get_document_text(conn: psycopg.Connection, document_id: int) -> str | None:
     row = conn.execute(
         "SELECT full_text FROM document_text WHERE document_id = %s",

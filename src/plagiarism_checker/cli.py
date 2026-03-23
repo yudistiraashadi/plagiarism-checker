@@ -47,13 +47,19 @@ def scrape(
 def index(
     path: Path = typer.Argument(..., help="Directory of PDFs or single PDF to index"),
     no_section_filter: bool = typer.Option(False, help="Disable section filtering"),
+    reindex: bool = typer.Option(False, help="Drop all existing data and reindex from scratch"),
 ) -> None:
-    """Index PDF documents into the plagiarism corpus."""
+    """Index PDF documents into the plagiarism corpus.
+
+    Skips PDFs that are already indexed. Use --reindex to drop all data and start fresh.
+    """
     import logging
     logging.basicConfig(level=logging.INFO)
 
     from plagiarism_checker.db import (
+        delete_all_documents,
         get_connection,
+        get_indexed_paths,
         insert_document,
         insert_document_text,
         insert_fingerprints,
@@ -78,15 +84,27 @@ def index(
         typer.echo("No PDF files found.")
         raise typer.Exit(1)
 
-    typer.echo(f"Indexing {len(pdf_files)} PDF(s)...")
-
     conn = get_connection()
     create_tables(conn)
+
+    if reindex:
+        typer.echo("Dropping all existing index data...")
+        delete_all_documents(conn)
+
+    already_indexed = get_indexed_paths(conn)
+    new_files = [f for f in pdf_files if str(f) not in already_indexed]
+
+    if not new_files:
+        typer.echo(f"All {len(pdf_files)} PDF(s) already indexed. Nothing to do.")
+        conn.close()
+        return
+
+    typer.echo(f"Indexing {len(new_files)} new PDF(s) ({len(pdf_files) - len(new_files)} already indexed)...")
 
     indexed = 0
     skipped = 0
 
-    for pdf_path in pdf_files:
+    for pdf_path in new_files:
         raw_text = extract_text_from_pdf(pdf_path, section_filter=not no_section_filter)
         if raw_text is None:
             skipped += 1
