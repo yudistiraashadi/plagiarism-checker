@@ -130,3 +130,74 @@ def index(
 
     conn.close()
     typer.echo(f"Done. Indexed: {indexed}, Skipped: {skipped}")
+
+
+@app.command()
+def check(
+    pdf_path: Path = typer.Argument(..., help="Path to the thesis PDF to check"),
+    format: str = typer.Option("terminal", help="Output format: terminal, json, html"),
+    output: Path | None = typer.Option(None, help="Output file path (prints to stdout if not set)"),
+) -> None:
+    """Check a thesis PDF for plagiarism against the indexed corpus."""
+    import logging
+    logging.basicConfig(level=logging.INFO)
+
+    from plagiarism_checker.checker.matcher import check_document
+    from plagiarism_checker.checker.report import format_html, format_json, format_terminal
+    from plagiarism_checker.db import (
+        find_matching_fingerprints,
+        get_connection,
+        get_document,
+    )
+    from plagiarism_checker.extractor.pdf_extractor import extract_text_from_pdf
+    from plagiarism_checker.indexer.winnowing import fingerprint_text
+    from plagiarism_checker.utils.text import load_stopwords, normalize_text, remove_stopwords
+
+    if not pdf_path.exists():
+        typer.echo(f"File not found: {pdf_path}")
+        raise typer.Exit(1)
+
+    raw_text = extract_text_from_pdf(pdf_path)
+    if raw_text is None:
+        typer.echo("Could not extract text from PDF.")
+        raise typer.Exit(1)
+
+    stopwords = load_stopwords()
+    normalized = normalize_text(raw_text)
+    cleaned = remove_stopwords(normalized, stopwords)
+
+    if not cleaned.strip():
+        typer.echo("No usable text after normalization.")
+        raise typer.Exit(1)
+
+    fps = fingerprint_text(cleaned)
+    if not fps:
+        typer.echo("No fingerprints generated — document too short.")
+        raise typer.Exit(1)
+
+    typer.echo(f"Generated {len(fps)} fingerprints. Querying corpus...")
+
+    conn = get_connection()
+    hash_values = [h for _, _, h in fps]
+    db_matches = find_matching_fingerprints(conn, hash_values)
+
+    typer.echo(f"Found {len(db_matches)} matching fingerprints. Analyzing...")
+
+    def get_doc_info(doc_id: int) -> dict | None:
+        return get_document(conn, doc_id)
+
+    overall_pct, results = check_document(fps, cleaned, db_matches, get_doc_info)
+    conn.close()
+
+    if format == "json":
+        report = format_json(overall_pct, results, cleaned)
+    elif format == "html":
+        report = format_html(overall_pct, results, cleaned)
+    else:
+        report = format_terminal(overall_pct, results, cleaned)
+
+    if output:
+        output.write_text(report)
+        typer.echo(f"Report written to {output}")
+    else:
+        typer.echo(report)
