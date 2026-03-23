@@ -1,0 +1,31 @@
+[project]
+name = "plagiarism-checker"
+version = "0.1.0"
+description = "Turnitin-style plagiarism detection for Indonesian university theses"
+readme = "README.md"
+authors = [
+    { name = "Yudistira Ashadi", email = "distra96@yahoo.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.15",
+    "pymupdf>=1.25",
+    "sickle>=0.7",
+    "psycopg[binary]>=3.2",
+    "httpx>=0.28",
+    "python-dotenv>=1.1",
+    "rich>=14",
+]
+
+[project.scripts]
+plagiarism-checker = "plagiarism_checker.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=6",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"

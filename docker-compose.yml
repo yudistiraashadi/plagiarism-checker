@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-plagiarism}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plagiarism}
+      POSTGRES_DB: ${POSTGRES_DB:-plagiarism_checker}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-plagiarism}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.24.0
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-plagiarism}:${POSTGRES_PASSWORD:-plagiarism}@postgres:5432/${POSTGRES_DB:-plagiarism_checker}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 20
+    ports:
+      - "${PGBOUNCER_PORT:-6432}:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
