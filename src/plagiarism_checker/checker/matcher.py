@@ -114,7 +114,6 @@ def check_document(
 
         # Build word-index-like pairs for consecutive detection
         # Use enumerate-based indices since fingerprints are ordered
-        indexed_matches = list(enumerate(matches))
         # Create pairs: (sequential index in submitted, sequential index in source)
         # We need to find runs where both submitted and source positions increase together
         match_pairs: list[tuple[int, int]] = []
