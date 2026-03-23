@@ -93,7 +93,7 @@ The system uses the Winnowing algorithm for fingerprint-based text matching. Thi
 
 ## Database Schema
 
-PostgreSQL, running in Docker.
+PostgreSQL with PgBouncer connection pooler, both running in Docker.
 
 ### Tables
 
@@ -145,8 +145,10 @@ plagiarism-checker check ./new-thesis.pdf --format html --output report.html
 plagiarism-checker/
 ├── pyproject.toml              # uv project config
 ├── README.md                   # Setup & usage instructions (uv, Docker, CLI)
+├── .env.example                # Template for environment variables
+├── .env                        # Local environment variables (gitignored)
 ├── Dockerfile
-├── docker-compose.yml          # PostgreSQL + app
+├── docker-compose.yml          # PostgreSQL + PgBouncer + app
 ├── src/
 │   └── plagiarism_checker/
 │       ├── __init__.py
@@ -179,15 +181,39 @@ plagiarism-checker/
 - **CLI framework:** Typer
 - **PDF extraction:** pymupdf
 - **OAI-PMH harvesting:** sickle
-- **Database:** PostgreSQL (Docker container)
+- **Database:** PostgreSQL (Docker container) with PgBouncer connection pooler
 - **DB driver:** psycopg
 - **HTTP client:** httpx
 
+## Configuration
+
+All configuration is managed via environment variables, loaded from a `.env` file.
+
+**`.env.example` template:**
+```env
+# Database
+POSTGRES_USER=plagiarism
+POSTGRES_PASSWORD=plagiarism
+POSTGRES_DB=plagiarism_checker
+POSTGRES_PORT=5432
+
+# PgBouncer
+PGBOUNCER_PORT=6432
+
+# App connects to PgBouncer, not directly to PostgreSQL
+DATABASE_URL=postgresql://plagiarism:plagiarism@localhost:6432/plagiarism_checker
+```
+
+`config.py` reads from environment variables with these defaults. The `.env` file is gitignored; `.env.example` is committed as a template.
+
 ## Infrastructure
 
-- `docker-compose.yml` runs PostgreSQL for development
+- `docker-compose.yml` runs PostgreSQL + PgBouncer for development
+- PgBouncer sits between the app and PostgreSQL, pooling connections (transaction mode)
+- App connects to PgBouncer (default port 6432), PgBouncer connects to PostgreSQL (default port 5432)
+- All ports are configurable via `.env`
 - App runs locally via `uv run` during development
-- Full Docker deployment (app + DB) available for production
+- Full Docker deployment (app + PgBouncer + DB) available for production
 - README.md documents setup with uv, Docker, and CLI usage
 
 ## Error Handling
