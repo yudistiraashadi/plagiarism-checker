@@ -4,9 +4,47 @@ A Turnitin-style plagiarism detection tool for Indonesian university theses. It 
 
 ## Prerequisites
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) package manager
-- Docker and Docker Compose
+Install the following before proceeding:
+
+### Python 3.12+
+
+Check if you have it:
+
+```bash
+python3 --version
+```
+
+If not installed, download from [python.org](https://www.python.org/downloads/) or use a version manager like [pyenv](https://github.com/pyenv/pyenv):
+
+```bash
+# macOS / Linux
+curl -fsSL https://pyenv.run | bash
+pyenv install 3.12
+pyenv global 3.12
+```
+
+### uv (Python package manager)
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Verify: `uv --version`
+
+### Docker and Docker Compose
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose) for your platform.
+
+Verify:
+
+```bash
+docker --version
+docker compose version
+```
 
 ## Setup
 
