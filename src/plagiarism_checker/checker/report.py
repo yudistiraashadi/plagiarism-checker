@@ -76,6 +76,8 @@ def format_html(
     overall_pct: float,
     results: list[MatchResult],
     submitted_text: str,
+    raw_text: str = "",
+    position_map: list[tuple[int, int, int, int]] | None = None,
 ) -> str:
     # Build highlighted text
     highlights: list[tuple[int, int, int]] = []  # (start, end, source_idx)

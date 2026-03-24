@@ -207,10 +207,13 @@ def check(
     overall_pct, results = check_document(fps, cleaned, db_matches, get_doc_info)
     conn.close()
 
+    from plagiarism_checker.utils.text import build_position_map
+    position_map = build_position_map(raw_text, stopwords)
+
     if format == "json":
         report = format_json(overall_pct, results, cleaned)
     elif format == "html":
-        report = format_html(overall_pct, results, cleaned)
+        report = format_html(overall_pct, results, cleaned, raw_text=raw_text, position_map=position_map)
     else:
         report = format_terminal(overall_pct, results, cleaned)
 
